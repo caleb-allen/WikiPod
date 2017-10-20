@@ -7,15 +7,16 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.location.Location
+import android.location.LocationManager
+import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.support.v7.app.AlertDialog
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
 import android.widget.Toast
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var proximitySensor : Sensor
 
     lateinit var speechManager : SpeechManager
+    lateinit var locationManager : LocationManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,15 +55,17 @@ class MainActivity : AppCompatActivity() {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
         speechManager = SpeechManager(this, {handleCommand(it)})
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
             }
-            /*override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-//                view.loadUrl(url)
-                return false
-            }*/
+        }
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+                callback.invoke(origin, true, false)
+            }
         }
         val logger = HttpLoggingInterceptor()
         logger.level = HttpLoggingInterceptor.Level.BASIC
@@ -74,6 +78,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun handleCommand(s: String) {
+        if (s.contains("nearby")) {
+            /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
+            nearby()
+            return
+        }
         val words = s.split(" ")
         var query = ""
         words.forEach{
@@ -85,8 +94,7 @@ class MainActivity : AppCompatActivity() {
         val queryUrl = "https://en.m.wikipedia.org/w/index.php?search=$query"
         Timber.d(query)
         Timber.d(queryUrl)
-//        webView.loadUrl(queryUrl)
-        startTalking(queryUrl)
+        startTalking(queryUrl, s)
     }
 
     fun initialize(){
@@ -94,14 +102,73 @@ class MainActivity : AppCompatActivity() {
 //        say("Welcome to WikiPod. Wave your hand in front of your phone to stop WikiPod. Wave it again to give a command. For additional help, wave your hand in front of your phone and say 'help'.")
     }
 
-    fun startTalking(wikiUrl: String){
+    fun nearby(){
+        val lastKnownLocation : Location?
+        try {
+            lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+        } catch (e: SecurityException) {
+            Toast.makeText(this, "An error occurred while fetching your location.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+//        val uri = Uri.Builder()
+//                .authority("https://en.wikipedia.org/w/api.php")
+//                .appendQueryParameter("action", "query")
+//                .appendQueryParameter("list", "geosearch")
+//                .appendQueryParameter("gsradius", "10000")
+//                .appendQueryParameter("gscoord", lastKnownLocation?.latitude.toString() + "|" +
+//                        lastKnownLocation?.longitude.toString())
+        val url = HttpUrl.Builder()
+                .scheme("https")
+                .host("en.wikipedia.org")
+                .encodedPath("/w/api.php")
+                .addQueryParameter("action", "query")
+                .addQueryParameter("list", "geosearch")
+                .addQueryParameter("gsradius", "10000")
+                .addQueryParameter("gscoord", lastKnownLocation?.latitude.toString() + "|" +
+                        lastKnownLocation?.longitude.toString())
+                .addQueryParameter("format", "json")
+                .build()
+        val request = Request.Builder()
+                .url(url)
+                .build()
+//                .get()
+//                .build()
+       httpClient.newCall(request).enqueue(object : Callback {
+           override fun onResponse(call: Call, response: Response) {
+               Timber.d(response.body()?.string())
+           }
+
+           override fun onFailure(call: Call?, e: IOException?) {
+
+           }
+
+       })
+
+        //?action=query&list=geosearch&gsradius=10000&gscoord=37.786971%7C-122.399677"
+    }
+
+    fun startTalking(wikiUrl: String, originalQuery: String){
         getHtml(wikiUrl, {
-            val html = it
-            doc = Jsoup.parse(html)
-            say(getPageTitle())
-            say(getSummary())
-            say("Page Contents")
-            say(getContentsTitles())
+            doc = Jsoup.parse(it)
+
+            when (getPageType()) {
+                PageType.SEARCH -> {
+                    say("I couldn't find anything matching \"$originalQuery\". Here are some search results.")
+                }
+                PageType.ARTICLE -> {
+                    say(getPageTitle())
+                    say(getSummary())
+                    say("Page Contents")
+                    say(getContentsTitles())
+                }
+                PageType.NEARBY -> {
+
+                }
+                else -> {
+//                    say("I couldn't understand the command \"$originalQuery\".")
+                }
+            }
 //            say("Purchase WikiPod Premium to enable voice navigation")
         })
     }
@@ -128,6 +195,15 @@ class MainActivity : AppCompatActivity() {
             Timber.d("Saying: $s")
             textToSpeech?.speak(s, TextToSpeech.QUEUE_ADD, null)
         }
+    }
+
+    fun getPageType(): PageType {
+        if (doc.select("#section_0").text().contains("Search results")) {
+            return PageType.SEARCH
+        }else if (doc.select("#section_0").text() == ("Nearby")) {
+            return PageType.NEARBY
+        }
+        return PageType.ARTICLE
     }
 
     fun getHtml(url : String, callback: (String) -> Unit) {
@@ -235,7 +311,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onFailure(call: Call?, e: IOException?) {
-                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
             }
         })
     }
