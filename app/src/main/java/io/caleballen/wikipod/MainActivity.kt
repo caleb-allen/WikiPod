@@ -2,29 +2,31 @@ package io.caleballen.wikipod
 
 import android.Manifest
 import android.content.Context
-import android.content.DialogInterface
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationManager
-import android.net.Uri
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.support.v7.app.AlertDialog
+import android.support.v7.app.AppCompatActivity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.*
+import android.widget.BaseAdapter
 import android.widget.Toast
+import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
-import com.karumi.dexter.listener.multi.DialogOnAnyDeniedMultiplePermissionsListener
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import io.caleballen.wikipod.data.WikiGeoSearch
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.item_list_option.view.*
 import okhttp3.*
 import okhttp3.logging.HttpLoggingInterceptor
 import org.jsoup.Jsoup
@@ -46,6 +48,34 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var speechManager : SpeechManager
     lateinit var locationManager : LocationManager
+
+    // list for adapter. First is label, second is action
+    val listOptions = ArrayList<Pair<String, () -> Unit>>()
+    val listAdapter = object : BaseAdapter() {
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            var cv = convertView
+            if (cv == null) {
+                cv = LayoutInflater.from(this@MainActivity)
+                        .inflate(R.layout.item_list_option, parent, false)
+            }
+            val v = cv!!
+            v.textOption.text = "${position + 1} - ${listOptions[position].first}"
+            v.textOption.setOnClickListener { listOptions[position].second() }
+            return v
+        }
+
+        override fun getItem(position: Int): Any {
+            return listOptions[position]
+        }
+
+        override fun getItemId(position: Int): Long {
+            return position.toLong()
+        }
+
+        override fun getCount(): Int {
+            return listOptions.size
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,6 +103,7 @@ class MainActivity : AppCompatActivity() {
                 .addInterceptor(logger)
                 .build()
 
+        listViewOptions.adapter = listAdapter
         permissions()
 
     }
@@ -81,6 +112,16 @@ class MainActivity : AppCompatActivity() {
         if (s.contains("nearby")) {
             /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
             nearby()
+            return
+        }
+        val number = s.toIntOrNull()
+        if (number != null) {
+            // we can select one of the options
+            if (number <= listOptions.size) {
+                listOptions[number].second()
+            }else{
+                say("There is no option for $s")
+            }
             return
         }
         val words = s.split(" ")
@@ -110,14 +151,6 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "An error occurred while fetching your location.", Toast.LENGTH_SHORT).show()
             return
         }
-
-//        val uri = Uri.Builder()
-//                .authority("https://en.wikipedia.org/w/api.php")
-//                .appendQueryParameter("action", "query")
-//                .appendQueryParameter("list", "geosearch")
-//                .appendQueryParameter("gsradius", "10000")
-//                .appendQueryParameter("gscoord", lastKnownLocation?.latitude.toString() + "|" +
-//                        lastKnownLocation?.longitude.toString())
         val url = HttpUrl.Builder()
                 .scheme("https")
                 .host("en.wikipedia.org")
@@ -132,20 +165,42 @@ class MainActivity : AppCompatActivity() {
         val request = Request.Builder()
                 .url(url)
                 .build()
-//                .get()
-//                .build()
        httpClient.newCall(request).enqueue(object : Callback {
            override fun onResponse(call: Call, response: Response) {
-               Timber.d(response.body()?.string())
+               val gson = Gson()
+               if (response.isSuccessful && response.body() != null) {
+                   val search = gson.fromJson(response.body()!!.string(), WikiGeoSearch::class.java)
+
+                   search?.query?.geoSearch?.sortedBy { it.dist }
+                   say("I found these nearby:")
+                   listOptions.clear()
+                   search?.query?.geoSearch?.forEach {
+                       Timber.d("${it.title} - ${it.dist}")
+                       if (it.title != null) {
+//                           say(it.title.stripNonProunouncable())
+                           val action = {
+                               handleCommand(it.title)
+                           }
+                           listOptions.add(
+                                   Pair(it.title, action)
+                           )
+                       }
+                   }
+                   runOnUiThread {
+                       listAdapter.notifyDataSetInvalidated()
+                   }
+
+
+               }else{
+                   Timber.e("Error getting location call")
+               }
            }
 
            override fun onFailure(call: Call?, e: IOException?) {
-
+               Timber.e(e)
            }
 
        })
-
-        //?action=query&list=geosearch&gsradius=10000&gscoord=37.786971%7C-122.399677"
     }
 
     fun startTalking(wikiUrl: String, originalQuery: String){

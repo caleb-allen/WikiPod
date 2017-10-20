@@ -38,4 +38,5 @@ dependencies {
     compile 'org.jsoup:jsoup:1.10.3'
     compile 'com.jakewharton.timber:timber:4.5.1'
     compile 'com.karumi:dexter:4.1.0'
+    compile 'com.google.code.gson:gson:2.8.2'
 }
