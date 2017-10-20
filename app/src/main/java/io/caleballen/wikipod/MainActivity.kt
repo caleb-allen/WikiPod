@@ -465,7 +465,7 @@ class MainActivity : AppCompatActivity() {
                             initialize()
                         }else{
                             AlertDialog.Builder(this@MainActivity)
-                                    .setMessage("Permissions are required to run this application.")
+                                    .setMessage("Audio recording is required to enable speech recognition. GPS is required to find nearby areas of interest.")
                                     .setPositiveButton(android.R.string.ok) { dialog, which ->
                                         permissions()
                                     }
