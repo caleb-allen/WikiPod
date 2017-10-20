@@ -19,6 +19,7 @@ import android.view.ViewGroup
 import android.webkit.*
 import android.widget.BaseAdapter
 import android.widget.Toast
+import com.google.android.gms.ads.AdRequest
 import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -111,6 +112,8 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
         listViewOptions.adapter = listAdapter
+        val adRequest = AdRequest.Builder().build()
+        advertisement.loadAd(adRequest)
         permissions()
 
     }

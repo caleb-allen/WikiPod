@@ -70,8 +70,26 @@
 
     <ListView
         android:layout_below="@id/toolbar"
+        android:layout_above="@id/advertisement"
         android:id="@+id/listViewOptions"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+
+    <!--<com.google.android.gms.ads.AdView xmlns:ads="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/advertisement"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-5438694514082087/3433800715"
+        android:layout_alignParentBottom="true"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>-->
+
+    <!--Test ad-->
+    <com.google.android.gms.ads.AdView xmlns:ads="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/advertisement"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-3940256099942544/6300978111"
+        android:layout_alignParentBottom="true"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 
 </RelativeLayout>
