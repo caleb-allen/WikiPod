@@ -9,10 +9,11 @@
     <string name="nearby_what_was_that">\"Nearby / What was that\"</string>
     <string name="dictate">\"Dictate\"</string>
     <string name="number">\"Any Number\"</string>
+    <string name="help">\"Help\"</string>
     <string name="how_to_use">To use WikiPod, wave your hand in front of your phone\'s screen (near the speaker on top), then speak a command.
         Wave your hand again to stop WikiPod from speaking.
         \n\nYou can ask WikiPod for specific articles. For example, try saying \'Yellowstone\'.
-        You can also ask WikiPod to find things near you. To do this, say 'what was that' or 'nearby'.
-        \n\nWikiPod will sometimes display a list of options. Choose an option by clicking it, or by saying its number. You can hear all of the list options by saying 'dictate'.
+        You can also ask WikiPod to find things near you. To do this, say \'what was that\' or \'nearby\'.
+        \n\nWikiPod will sometimes display a list of options. Choose an option by clicking it, or by saying its number. You can hear all of the list options by saying \'dictate\'.
     </string>
 </resources>

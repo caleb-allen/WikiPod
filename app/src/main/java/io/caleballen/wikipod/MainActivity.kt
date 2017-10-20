@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     val listOptions = ArrayList<Pair<String, () -> Unit>>()
     val listAdapter = object : BaseAdapter() {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            rlGuide.visibility = View.GONE
             var cv = convertView
             if (cv == null) {
                 cv = LayoutInflater.from(this@MainActivity)

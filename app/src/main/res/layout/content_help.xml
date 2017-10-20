@@ -39,84 +39,99 @@
         android:layout_height="wrap_content" />
 
     <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="40dp"
         android:orientation="vertical"
         android:paddingLeft="40dp"
-        android:paddingRight="40dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:paddingRight="40dp">
 
 
         <View
-            android:background="@color/light_gray"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="20dp"
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            />
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/light_gray" />
 
         <TextView
-            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="HOW TO USE:"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:textStyle="bold" />
 
         <TextView
-            android:layout_marginTop="4dp"
-            android:text="@string/how_to_use"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/how_to_use" />
 
 
         <View
-            android:background="@color/light_gray"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="20dp"
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            />
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/light_gray" />
 
         <TextView
-            android:textStyle="bold"
-            android:text="COMMANDS:"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:text="COMMANDS:"
+            android:textStyle="bold" />
 
         <TextView
-            android:textStyle="italic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/nearby_what_was_that"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:textStyle="italic" />
+
         <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="WikiPod fetches articles of nearby locations."
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:text="WikiPod fetches articles of nearby locations." />
 
 
         <TextView
-            android:textStyle="italic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="@string/dictate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-        <TextView
-            android:layout_marginTop="4dp"
-            android:text="WikiPod reads whatever is on the screen, usually a list."
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:textStyle="italic" />
 
         <TextView
-            android:textStyle="italic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="WikiPod reads whatever is on the screen, usually a list." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="@string/number"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:textStyle="italic" />
+
         <TextView
-            android:layout_marginTop="4dp"
-            android:text="WikiPod selects an item on the list."
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="WikiPod selects an item on the list." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/help"
+            android:textStyle="italic" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="WikiPod reads a help message." />
     </LinearLayout>
 
 </LinearLayout>
