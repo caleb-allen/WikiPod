@@ -1,10 +1,31 @@
 package io.caleballen.wikipod
 
+import android.Manifest
+import android.content.Context
+import android.content.DialogInterface
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.support.v7.app.AlertDialog
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
+import com.karumi.dexter.Dexter
+import com.karumi.dexter.MultiplePermissionsReport
+import com.karumi.dexter.PermissionToken
+import com.karumi.dexter.listener.PermissionRequest
+import com.karumi.dexter.listener.multi.DialogOnAnyDeniedMultiplePermissionsListener
+import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.*
+import okhttp3.logging.HttpLoggingInterceptor
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import timber.log.Timber
@@ -15,26 +36,74 @@ import java.util.concurrent.LinkedBlockingQueue
 class MainActivity : AppCompatActivity() {
     var textToSpeech : TextToSpeech? = null
     var ttsIsInitialized = false
+    val thingsToSay : Queue<String> = LinkedBlockingQueue()
     lateinit var httpClient : OkHttpClient
-
     lateinit var doc : Document
 
-    val thingsToSay : Queue<String> = LinkedBlockingQueue()
+    lateinit var sensorManager : SensorManager
+    lateinit var proximitySensor : Sensor
+
+    lateinit var speechManager : SpeechManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        getHtml("https://en.m.wikipedia.org/wiki/Agnes_Taylor", {
+
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+        speechManager = SpeechManager(this, {handleCommand(it)})
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                return false
+            }
+            /*override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+//                view.loadUrl(url)
+                return false
+            }*/
+        }
+        val logger = HttpLoggingInterceptor()
+        logger.level = HttpLoggingInterceptor.Level.BASIC
+        httpClient = OkHttpClient.Builder()
+                .addInterceptor(logger)
+                .build()
+
+        permissions()
+
+    }
+
+    fun handleCommand(s: String) {
+        val words = s.split(" ")
+        var query = ""
+        words.forEach{
+            query += it + "+"
+        }
+        if (query.length > 1) {
+            query = query.substring(0, query.lastIndex)
+        }
+        val queryUrl = "https://en.m.wikipedia.org/w/index.php?search=$query"
+        Timber.d(query)
+        Timber.d(queryUrl)
+//        webView.loadUrl(queryUrl)
+        startTalking(queryUrl)
+    }
+
+    fun initialize(){
+        say("Welcome to WikiPod!")
+//        say("Welcome to WikiPod. Wave your hand in front of your phone to stop WikiPod. Wave it again to give a command. For additional help, wave your hand in front of your phone and say 'help'.")
+    }
+
+    fun startTalking(wikiUrl: String){
+        getHtml(wikiUrl, {
             val html = it
             doc = Jsoup.parse(html)
             say(getPageTitle())
             say(getSummary())
             say("Page Contents")
             say(getContentsTitles())
+//            say("Purchase WikiPod Premium to enable voice navigation")
         })
-
-
     }
 
     fun say(s : String){
@@ -62,15 +131,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun getHtml(url : String, callback: (String) -> Unit) {
-        httpClient = OkHttpClient()
         webView.loadUrl(url)
         getPage(url, callback)
+    }
+
+    val sensorListener = object : SensorEventListener{
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+
+        }
+
+        override fun onSensorChanged(event: SensorEvent?) {
+            val distance = event?.values!!.first()
+            Timber.d(distance.toString())
+            if (distance < proximitySensor.maximumRange) {
+                if (textToSpeech != null) {
+                    if (textToSpeech!!.isSpeaking) {
+                        textToSpeech!!.stop()
+                    }else{
+                        speechManager.listen()
+                    }
+                }
+            }
+        }
+
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sensorManager.registerListener(sensorListener, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     override fun onPause() {
         super.onPause()
         textToSpeech?.stop()
         textToSpeech?.shutdown()
+        sensorManager.unregisterListener(sensorListener)
     }
 
     override fun onDestroy() {
@@ -143,5 +238,32 @@ class MainActivity : AppCompatActivity() {
                 TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
             }
         })
+    }
+
+
+    fun permissions(){
+        Dexter.withActivity(this)
+                .withPermissions(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.RECORD_AUDIO
+                ).withListener(object : MultiplePermissionsListener {
+                    override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
+                        if (report!!.areAllPermissionsGranted()) {
+                            initialize()
+                        }else{
+                            AlertDialog.Builder(this@MainActivity)
+                                    .setMessage("Permissions are required to run this application.")
+                                    .setPositiveButton(android.R.string.ok) { dialog, which ->
+                                        permissions()
+                                    }
+                                    .show()
+                        }
+                    }
+
+                    override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>?, token: PermissionToken?) {
+                        token?.continuePermissionRequest()
+                    }
+                })
+                .check()
     }
 }
