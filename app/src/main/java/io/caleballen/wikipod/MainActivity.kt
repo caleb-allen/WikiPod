@@ -39,7 +39,7 @@ import java.util.concurrent.LinkedBlockingQueue
 class MainActivity : AppCompatActivity() {
     var textToSpeech : TextToSpeech? = null
     var ttsIsInitialized = false
-    val thingsToSay : Queue<String> = LinkedBlockingQueue()
+    val thingsToSay : Queue<String> = LinkedBlockingQueue<String>()
     lateinit var httpClient : OkHttpClient
     lateinit var doc : Document
 
@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         speechManager = SpeechManager(this, {handleCommand(it)})
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
-        webView.webViewClient = object : WebViewClient() {
+        /*webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
             }
@@ -96,7 +96,7 @@ class MainActivity : AppCompatActivity() {
             override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
                 callback.invoke(origin, true, false)
             }
-        }
+        }*/
         val logger = HttpLoggingInterceptor()
         logger.level = HttpLoggingInterceptor.Level.BASIC
         httpClient = OkHttpClient.Builder()
@@ -109,19 +109,45 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun handleCommand(s: String) {
-        if (s.contains("nearby")) {
+        if (s.contains("nearby") || s.contains("what was that", ignoreCase = true)) {
             /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
             nearby()
             return
         }
-        val number = s.toIntOrNull()
-        if (number != null) {
+//        val number = s.equals("one", true) ?: s.toIntOrNull()
+        val number = if(s.equals("one", true)){
+            1
+        }else if (s.equals("two", true)) {
+            2
+        }else{
+            s.toIntOrNull()
+        }
+        if (number != null && listOptions.isNotEmpty()) {
             // we can select one of the options
-            if (number <= listOptions.size) {
-                listOptions[number].second()
+            if (number > 0 && number - 1 <= listOptions.size) {
+                listOptions[number - 1].second()
             }else{
                 say("There is no option for $s")
             }
+            return
+        }
+
+        if (s.equals("dictate", true)) {
+            if (listOptions.isNotEmpty()) {
+                listOptions.forEach {
+                    say(it.first)
+                }
+            }else{
+                say("There is nothing on the screen to dictate.")
+            }
+            return
+        }
+
+        if (s.equals("help", true)) {
+            say("Welcome to WikiPod. Wave your hand in front of your phone to stop WikiPod. Wave it again to give a command.")
+            say("You can ask WikiPod for specific articles. For example, try saying 'Yellowstone'.")
+            say("You can also ask WikiPod to find things near you. To do this, say 'what was that', or 'nearby'")
+            say("WikiPod will sometimes display a list of options. Choose an option by clicking it or by saying a number.")
             return
         }
         val words = s.split(" ")
@@ -140,7 +166,6 @@ class MainActivity : AppCompatActivity() {
 
     fun initialize(){
         say("Welcome to WikiPod!")
-//        say("Welcome to WikiPod. Wave your hand in front of your phone to stop WikiPod. Wave it again to give a command. For additional help, wave your hand in front of your phone and say 'help'.")
     }
 
     fun nearby(){
@@ -177,8 +202,8 @@ class MainActivity : AppCompatActivity() {
                    search?.query?.geoSearch?.forEach {
                        Timber.d("${it.title} - ${it.dist}")
                        if (it.title != null) {
-//                           say(it.title.stripNonProunouncable())
                            val action = {
+                               textToSpeech?.stop()
                                handleCommand(it.title)
                            }
                            listOptions.add(
@@ -229,7 +254,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun say(s : String){
-        thingsToSay.add(s)
+        // reduce string size so the tts works
+        s.spliceSentences().forEach {
+            thingsToSay.add(it)
+        }
+
         if (textToSpeech == null) {
             textToSpeech = TextToSpeech(this, TextToSpeech.OnInitListener {
                 if (it == TextToSpeech.SUCCESS) {
@@ -248,7 +277,11 @@ class MainActivity : AppCompatActivity() {
         while (thingsToSay.isNotEmpty()) {
             val s = thingsToSay.poll()
             Timber.d("Saying: $s")
-            textToSpeech?.speak(s, TextToSpeech.QUEUE_ADD, null)
+            val status = textToSpeech?.speak(s, TextToSpeech.QUEUE_ADD, null)
+            if (status != TextToSpeech.SUCCESS) {
+                Timber.e("Error queuing TTS: $status")
+                Toast.makeText(this, "An error occurred while speaking the text.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -262,7 +295,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun getHtml(url : String, callback: (String) -> Unit) {
-        webView.loadUrl(url)
+//        webView.loadUrl(url)
         getPage(url, callback)
     }
 
@@ -279,7 +312,11 @@ class MainActivity : AppCompatActivity() {
                     if (textToSpeech!!.isSpeaking) {
                         textToSpeech!!.stop()
                     }else{
-                        speechManager.listen()
+                        if (speechManager.isListening()) {
+                            speechManager.stop()
+                        }else{
+                            speechManager.listen()
+                        }
                     }
                 }
             }
@@ -295,12 +332,12 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         textToSpeech?.stop()
-        textToSpeech?.shutdown()
         sensorManager.unregisterListener(sensorListener)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        textToSpeech?.shutdown()
     }
 
     fun getPageTitle() : String{
@@ -322,10 +359,47 @@ class MainActivity : AppCompatActivity() {
     fun getContentsTitles(): String {
         val elements = doc.select("h2 .mw-headline")
         var s : String = ""
-        elements.eachText().forEach {
-            s += it + ". "
-        }
+        listOptions.clear()
+        elements.eachText().forEachIndexed({i: Int, sectionName: String ->
+            s += sectionName + ". "
+            listOptions.add(Pair(sectionName, {
+                val sectionContent = doc.select(".mf-section-${i + 1}")
+                sectionContent.select(".thumb").remove()
+                textToSpeech?.stop()
+                say(sectionName)
+                say(sectionContent.text().stripNonProunouncable())
+            }))
+        })
+        listAdapter.notifyDataSetInvalidated()
         return s
+    }
+
+    /**
+     * Reduce so that all sentences are below max for tts
+     */
+    fun String.spliceSentences(): Array<String> {
+        val new = ArrayList<String>()
+        if (this.count() < TextToSpeech.getMaxSpeechInputLength()) {
+            new.add(this)
+            return new.toTypedArray()
+        }
+
+        var i = this.count() / 2
+        var searching = true
+        while (searching && i < this.count() - 2) {
+            if (this[i] == '.' && this[i + 1] == ' ') {
+                substring(0, i + 1).spliceSentences().forEach {
+                    new.add(it)
+                }
+                substring(i + 1, this.count()).spliceSentences().forEach {
+                    new.add(it)
+                }
+                searching = false
+            }
+            i++
+        }
+
+        return new.toTypedArray()
     }
 
     fun String.stripNonProunouncable() : String{

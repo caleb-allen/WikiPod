@@ -14,6 +14,7 @@ import timber.log.Timber
 
 class SpeechManager(context: Context, val callback: (String) -> Unit) : RecognitionListener {
     var speechRecognizer : SpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+    private var isListening = false
     init {
         speechRecognizer.setRecognitionListener(this)
     }
@@ -22,6 +23,16 @@ class SpeechManager(context: Context, val callback: (String) -> Unit) : Recognit
         speechIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command")
         speechIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command")
         speechRecognizer.startListening(speechIntent)
+        isListening = true
+    }
+
+    fun isListening() : Boolean{
+        return isListening
+    }
+
+    fun stop(){
+        isListening = false
+        speechRecognizer.stopListening()
     }
 
     override fun onReadyForSpeech(params: Bundle?) {
@@ -50,15 +61,17 @@ class SpeechManager(context: Context, val callback: (String) -> Unit) : Recognit
 
     override fun onEndOfSpeech() {
         Timber.v("onEndOfSpeech")
+        isListening = false
     }
 
     override fun onError(error: Int) {
         Timber.e("onError: $error")
+        isListening = false
     }
 
     override fun onResults(results: Bundle) {
-        Timber.d("onResults: ${results.toString()}")
-
+        Timber.d("onResults: $results")
+        isListening = false
         val guesses = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
         val confidence = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
 
