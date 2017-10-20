@@ -2,6 +2,7 @@ package io.caleballen.wikipod
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -86,6 +87,11 @@ class MainActivity : AppCompatActivity() {
         proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
         speechManager = SpeechManager(this, {handleCommand(it)})
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        imgHelp.setOnClickListener {
+            val i = Intent(this, HelpActivity::class.java)
+            startActivity(i)
+        }
 
         /*webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {

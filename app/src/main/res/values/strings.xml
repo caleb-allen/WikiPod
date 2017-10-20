@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">WikiPod</string>
+    <string name="title_activity_help">HelpActivity</string>
+    <string name="idea_for_wikipod">The idea for WikiPod came on a road trip during which I passed dozens of fascinating places.
+        With no hands free I was unable to get much information while I was driving.
+        WikiPod attempts to solve this problem by giving you complete access to Wikipedia using just your voice.</string>
+    <string name="wikipod_reads">WikiPod is an app that lets you use Wikipedia with just your voice!</string>
+    <string name="welcome_to_wikipod">Welcome to WikiPod!</string>
+    <string name="nearby_what_was_that">\"Nearby / What was that\"</string>
+    <string name="dictate">\"Dictate\"</string>
+    <string name="number">\"Any Number\"</string>
+    <string name="how_to_use">To use WikiPod, wave your hand in front of your phone\'s screen (near the speaker on top), then speak a command.
+        Wave your hand again to stop WikiPod from speaking.
+        \n\nYou can ask WikiPod for specific articles. For example, try saying \'Yellowstone\'.
+        You can also ask WikiPod to find things near you. To do this, say 'what was that' or 'nearby'.
+        \n\nWikiPod will sometimes display a list of options. Choose an option by clicking it, or by saying its number. You can hear all of the list options by saying 'dictate'.
+    </string>
 </resources>
