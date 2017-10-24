@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
 
         listViewOptions.adapter = listAdapter
         val adRequest = AdRequest.Builder()
-//                .addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
+                .addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
                 .build()
         advertisement.loadAd(adRequest)
         permissions()
