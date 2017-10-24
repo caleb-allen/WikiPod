@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (s.equals("dictate", true)) {
+        if (s.equals("read it", true)) {
             if (listOptions.isNotEmpty()) {
                 listOptions.forEachIndexed({index: Int, pair: Pair<String, () -> Unit> ->
                         say("${index + 1}: ${pair.first}".stripNonProunouncable())
@@ -159,7 +159,7 @@ class MainActivity : AppCompatActivity() {
             say("Help. Wave your hand in front of your phone to give WikiPod a command. Wave it again to stop WikiPod.")
             say("You can ask WikiPod for specific articles. For example, try saying 'Yellowstone'.")
             say("You can also ask WikiPod to find things near you. To do this, say 'what was that', or 'nearby'")
-            say("WikiPod will sometimes display a list of options. Choose an option by clicking it or by saying its number. Hear all the options by saying 'dictate'")
+            say("WikiPod will sometimes display a list of options. Choose an option by clicking it or by saying its number. Hear all the options by saying 'read it'")
             say("Click the help button on the top right corner for more information, or say 'help' to hear this message again.")
             return
         }
