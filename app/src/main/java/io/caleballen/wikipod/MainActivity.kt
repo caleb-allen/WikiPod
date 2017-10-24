@@ -20,6 +20,7 @@ import android.webkit.*
 import android.widget.BaseAdapter
 import android.widget.Toast
 import com.google.android.gms.ads.AdRequest
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
@@ -50,6 +51,8 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var speechManager : SpeechManager
     lateinit var locationManager : LocationManager
+
+    lateinit var firebaseAnalytics : FirebaseAnalytics
 
     // list for adapter. First is label, second is action
     val listOptions = ArrayList<Pair<String, () -> Unit>>()
@@ -84,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        firebaseAnalytics = FirebaseAnalytics.getInstance(this)
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
@@ -94,17 +98,6 @@ class MainActivity : AppCompatActivity() {
             val i = Intent(this, HelpActivity::class.java)
             startActivity(i)
         }
-
-        /*webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false
-            }
-        }
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
-                callback.invoke(origin, true, false)
-            }
-        }*/
         val logger = HttpLoggingInterceptor()
         logger.level = HttpLoggingInterceptor.Level.BASIC
         httpClient = OkHttpClient.Builder()
@@ -113,14 +106,18 @@ class MainActivity : AppCompatActivity() {
 
         listViewOptions.adapter = listAdapter
         val adRequest = AdRequest.Builder()
-//                .addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
-                .build()
-        advertisement.loadAd(adRequest)
-        permissions()
+        if (BuildConfig.DEBUG) {
+            adRequest.addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
+        }
+        advertisement.loadAd(adRequest.build())
 
+        permissions()
     }
 
     fun handleCommand(s: String) {
+        val eventBundle = Bundle()
+        eventBundle.putString(FirebaseAnalytics.Param.SEARCH_TERM, s)
+        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SEARCH, eventBundle)
         if (s.contains("nearby") || s.contains("what was that", ignoreCase = true)) {
             /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
             nearby()
@@ -274,12 +271,25 @@ class MainActivity : AppCompatActivity() {
 
         if (textToSpeech == null) {
             textToSpeech = TextToSpeech(this, TextToSpeech.OnInitListener {
-                if (it == TextToSpeech.SUCCESS) {
-                    ttsIsInitialized = true
-                    sayAll()
-                }else if (it == TextToSpeech.ERROR) {
-                    Timber.e("Error initializing TTS")
+                val result = it
+                textToSpeech?.let {
+                    // if the language is not available
+                    it.language = Locale.ENGLISH
+                    if (it.isLanguageAvailable(Locale.ENGLISH) < TextToSpeech.LANG_AVAILABLE) {
+                        Toast.makeText(MainActivity@this, "Please install the English TTS data set.", Toast.LENGTH_LONG).show()
+                        val installIntent = Intent()
+                        installIntent.action = TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA
+                        startActivity(installIntent)
+                    }else{
+                        if (result == TextToSpeech.SUCCESS) {
+                            ttsIsInitialized = true
+                            sayAll()
+                        }else if (result == TextToSpeech.ERROR) {
+                            Timber.e("Error initializing TTS")
+                        }
+                    }
                 }
+
             })
         }else if(ttsIsInitialized){
             sayAll()
@@ -457,7 +467,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
 
     fun permissions(){
         Dexter.withActivity(this)

@@ -7,6 +7,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import timber.log.Timber
+import java.util.*
 
 /**
  * Created by caleb on 10/19/2017.
@@ -21,7 +22,7 @@ class SpeechManager(context: Context, val callback: (String) -> Unit) : Recognit
     fun listen(){
         val speechIntent = Intent()
         speechIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command")
-        speechIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command")
+        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
         speechRecognizer.startListening(speechIntent)
         isListening = true
     }
