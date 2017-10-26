@@ -16,6 +16,12 @@ import timber.log.Timber
 /**
  * Created by caleb on 10/25/2017.
  */
+
+/**
+ * This is to cache the PermissionChecker results which take a long time
+ */
+private val acceptedPermissions = linkedSetOf<String>()
+
 fun getPermission(context: Activity,
                permission: String,
                permissionRequest: String,
@@ -32,6 +38,7 @@ fun getPermission(context: Activity,
 
                     override fun onPermissionGranted(response: PermissionGrantedResponse?) {
                         Timber.v("Permission Granted.")
+                        acceptedPermissions.add(permission)
                         successCallback()
                     }
 
@@ -46,10 +53,13 @@ fun getPermission(context: Activity,
                 .check()
     }
 
-    if (PermissionChecker.checkSelfPermission(context, permission) == PermissionChecker.PERMISSION_GRANTED) {
-        successCallback()
-    }else{
-        AlertDialog.Builder(context)
+    when {
+        acceptedPermissions.contains(permission) -> successCallback()
+        PermissionChecker.checkSelfPermission(context, permission) == PermissionChecker.PERMISSION_GRANTED -> {
+            acceptedPermissions.add(permission)
+            successCallback()
+        }
+        else -> AlertDialog.Builder(context)
                 .setMessage(permissionRequest)
                 .setPositiveButton(android.R.string.ok, getPermissions)
                 .show()

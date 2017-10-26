@@ -13,6 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <RelativeLayout
+            android:animateLayoutChanges="true"
             android:layout_width="wrap_content"
             android:layout_height="match_parent">
             <TextView
@@ -21,6 +22,14 @@
                 android:textSize="20sp"
                 android:textColor="@color/white"
                 android:text="@string/app_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+            <ImageView
+                android:visibility="gone"
+                android:id="@+id/imgStop"
+                android:layout_marginRight="10dp"
+                android:layout_toLeftOf="@id/imgHelp"
+                android:src="@drawable/stop"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
             <ImageView

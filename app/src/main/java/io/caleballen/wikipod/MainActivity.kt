@@ -2,7 +2,6 @@ package io.caleballen.wikipod
 
 import android.Manifest
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -12,7 +11,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
-import android.support.v7.app.AlertDialog
+import android.speech.tts.UtteranceProgressListener
 import android.support.v7.app.AppCompatActivity
 import android.view.LayoutInflater
 import android.view.View
@@ -22,12 +21,6 @@ import android.widget.Toast
 import com.google.android.gms.ads.AdRequest
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.gson.Gson
-import com.karumi.dexter.Dexter
-import com.karumi.dexter.PermissionToken
-import com.karumi.dexter.listener.PermissionDeniedResponse
-import com.karumi.dexter.listener.PermissionGrantedResponse
-import com.karumi.dexter.listener.PermissionRequest
-import com.karumi.dexter.listener.single.PermissionListener
 import io.caleballen.wikipod.data.WikiGeoSearch
 import io.caleballen.wikipod.util.SpeechManager
 import io.caleballen.wikipod.util.getPermission
@@ -41,10 +34,18 @@ import timber.log.Timber
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
+import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
     var textToSpeech: TextToSpeech? = null
     var ttsIsInitialized = false
+    var ttsIsSpeaking = false
+        set(value) {
+            field = value
+            runOnUiThread{
+                imgStop.visibility = if (value) View.VISIBLE else View.GONE
+            }
+        }
     val thingsToSay: Queue<String> = LinkedBlockingQueue<String>()
     lateinit var httpClient: OkHttpClient
     lateinit var doc: Document
@@ -101,6 +102,12 @@ class MainActivity : AppCompatActivity() {
             val i = Intent(this, HelpActivity::class.java)
             startActivity(i)
         }
+
+        imgStop.setOnClickListener({
+            textToSpeech?.stop()
+            ttsIsSpeaking = false
+        })
+
         val logger = HttpLoggingInterceptor()
         logger.level = HttpLoggingInterceptor.Level.BASIC
         httpClient = OkHttpClient.Builder()
@@ -277,6 +284,20 @@ class MainActivity : AppCompatActivity() {
         textToSpeech = TextToSpeech(this, TextToSpeech.OnInitListener {
             val result = it
             textToSpeech?.let {
+                it.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onDone(utteranceId: String?) {
+                        Timber.d("OnDone: $utteranceId")
+                        ttsIsSpeaking = false
+                    }
+
+                    override fun onError(utteranceId: String?) {
+                    }
+
+                    override fun onStart(utteranceId: String?) {
+                        Timber.d("onStart: $utteranceId")
+                        ttsIsSpeaking = true
+                    }
+                })
                 // if the language is not available
                 it.language = Locale.ENGLISH
                 if (it.isLanguageAvailable(Locale.ENGLISH) < TextToSpeech.LANG_AVAILABLE) {
@@ -314,7 +335,9 @@ class MainActivity : AppCompatActivity() {
         while (thingsToSay.isNotEmpty()) {
             val s = thingsToSay.poll()
             Timber.d("Saying: $s")
-            val status = textToSpeech?.speak(s, TextToSpeech.QUEUE_ADD, null)
+            val hm = HashMap<String, String>()
+            hm[TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID] = s
+            val status = textToSpeech?.speak(s, TextToSpeech.QUEUE_ADD, hm)
             if (status != TextToSpeech.SUCCESS) {
                 Timber.e("Error queuing TTS: $status")
                 Toast.makeText(this, "An error occurred while speaking the text.", Toast.LENGTH_SHORT).show()
@@ -368,12 +391,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        textToSpeech?.stop()
         sensorManager.unregisterListener(sensorListener)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        textToSpeech?.stop()
         textToSpeech?.shutdown()
     }
 
