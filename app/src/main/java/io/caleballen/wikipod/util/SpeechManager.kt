@@ -1,5 +1,7 @@
-package io.caleballen.wikipod
+package io.caleballen.wikipod.util
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -13,18 +15,28 @@ import java.util.*
  * Created by caleb on 10/19/2017.
  */
 
-class SpeechManager(context: Context, val callback: (String) -> Unit) : RecognitionListener {
+class SpeechManager(val context: Activity, val callback: (String) -> Unit) : RecognitionListener {
     var speechRecognizer : SpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
     private var isListening = false
     init {
         speechRecognizer.setRecognitionListener(this)
     }
     fun listen(){
-        val speechIntent = Intent()
-        speechIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command")
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
-        speechRecognizer.startListening(speechIntent)
-        isListening = true
+        val startListening = {
+            val speechIntent = Intent()
+            speechIntent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command")
+            speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.US.toString())
+            speechRecognizer.startListening(speechIntent)
+            isListening = true
+        }
+        getPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO,
+                "WikiPod needs access to the microphone in order to hear your command.",
+                "WikiPod is unable to hear your command without permission. " +
+                        "Please accept the audio permission in order to use this feature.",
+                startListening
+        )
     }
 
     fun isListening() : Boolean{

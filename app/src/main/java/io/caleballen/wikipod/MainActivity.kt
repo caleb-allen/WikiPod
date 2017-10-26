@@ -17,21 +17,20 @@ import android.support.v7.app.AppCompatActivity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.*
 import android.widget.BaseAdapter
 import android.widget.Toast
 import com.google.android.gms.ads.AdRequest
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.gson.Gson
 import com.karumi.dexter.Dexter
-import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionDeniedResponse
 import com.karumi.dexter.listener.PermissionGrantedResponse
 import com.karumi.dexter.listener.PermissionRequest
-import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import com.karumi.dexter.listener.single.PermissionListener
 import io.caleballen.wikipod.data.WikiGeoSearch
+import io.caleballen.wikipod.util.SpeechManager
+import io.caleballen.wikipod.util.getPermission
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_list_option.view.*
 import okhttp3.*
@@ -114,6 +113,7 @@ class MainActivity : AppCompatActivity() {
             adRequest.addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
         }
         advertisement.loadAd(adRequest.build())
+        initializeTts()
     }
 
     fun handleCommand(s: String) {
@@ -122,7 +122,8 @@ class MainActivity : AppCompatActivity() {
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SEARCH, eventBundle)
         if (s.contains("nearby") || s.contains("what was that", ignoreCase = true)) {
             /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
-            permission(
+            getPermission(
+                    this@MainActivity,
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     "WikiPod requires access to your location in order to" +
                             " find items nearby.",
@@ -272,6 +273,30 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    fun initializeTts(){
+        textToSpeech = TextToSpeech(this, TextToSpeech.OnInitListener {
+            val result = it
+            textToSpeech?.let {
+                // if the language is not available
+                it.language = Locale.ENGLISH
+                if (it.isLanguageAvailable(Locale.ENGLISH) < TextToSpeech.LANG_AVAILABLE) {
+                    Toast.makeText(MainActivity@ this, "Please install the English TTS data set.", Toast.LENGTH_LONG).show()
+                    val installIntent = Intent()
+                    installIntent.action = TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA
+                    startActivity(installIntent)
+                } else {
+                    if (result == TextToSpeech.SUCCESS) {
+                        ttsIsInitialized = true
+                        sayAll()
+                    } else if (result == TextToSpeech.ERROR) {
+                        Timber.e("Error initializing TTS")
+                    }
+                }
+            }
+
+        })
+    }
+
     fun say(s: String) {
         // reduce string size so the tts works
         s.spliceSentences().forEach {
@@ -279,27 +304,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (textToSpeech == null) {
-            textToSpeech = TextToSpeech(this, TextToSpeech.OnInitListener {
-                val result = it
-                textToSpeech?.let {
-                    // if the language is not available
-                    it.language = Locale.ENGLISH
-                    if (it.isLanguageAvailable(Locale.ENGLISH) < TextToSpeech.LANG_AVAILABLE) {
-                        Toast.makeText(MainActivity@ this, "Please install the English TTS data set.", Toast.LENGTH_LONG).show()
-                        val installIntent = Intent()
-                        installIntent.action = TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA
-                        startActivity(installIntent)
-                    } else {
-                        if (result == TextToSpeech.SUCCESS) {
-                            ttsIsInitialized = true
-                            sayAll()
-                        } else if (result == TextToSpeech.ERROR) {
-                            Timber.e("Error initializing TTS")
-                        }
-                    }
-                }
-
-            })
+            initializeTts()
         } else if (ttsIsInitialized) {
             sayAll()
         }
@@ -482,37 +487,5 @@ class MainActivity : AppCompatActivity() {
                             Manifest.permission.ACCESS_FINE_LOCATION,
                             Manifest.permission.RECORD_AUDIO
      */
-    fun permission(permission: String,
-                   permissionRequest: String,
-                   deniedResponse: String,
-                   successCallback: () -> Unit) {
 
-
-        val getPermissions = { dialog: DialogInterface, which: Int ->
-            Dexter.withActivity(this)
-                    .withPermission(permission)
-                    .withListener(object : PermissionListener {
-                        override fun onPermissionRationaleShouldBeShown(permission: PermissionRequest, token: PermissionToken) {
-                            token.continuePermissionRequest()
-                        }
-
-                        override fun onPermissionGranted(response: PermissionGrantedResponse?) {
-                            successCallback()
-                        }
-
-                        override fun onPermissionDenied(response: PermissionDeniedResponse) {
-                            AlertDialog.Builder(this@MainActivity)
-                                    .setMessage(deniedResponse)
-//                            .setPositiveButton(android.R.string.ok)
-                                    .show()
-                        }
-                    })
-                    .check()
-        }
-
-        AlertDialog.Builder(this@MainActivity)
-                .setMessage(permissionRequest)
-                .setPositiveButton(android.R.string.ok, getPermissions)
-                .show()
-    }
 }
