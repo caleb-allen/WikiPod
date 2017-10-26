@@ -2,6 +2,7 @@ package io.caleballen.wikipod
 
 import android.Manifest
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -25,8 +26,11 @@ import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
+import com.karumi.dexter.listener.PermissionDeniedResponse
+import com.karumi.dexter.listener.PermissionGrantedResponse
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import com.karumi.dexter.listener.single.PermissionListener
 import io.caleballen.wikipod.data.WikiGeoSearch
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_list_option.view.*
@@ -40,19 +44,19 @@ import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 
 class MainActivity : AppCompatActivity() {
-    var textToSpeech : TextToSpeech? = null
+    var textToSpeech: TextToSpeech? = null
     var ttsIsInitialized = false
-    val thingsToSay : Queue<String> = LinkedBlockingQueue<String>()
-    lateinit var httpClient : OkHttpClient
-    lateinit var doc : Document
+    val thingsToSay: Queue<String> = LinkedBlockingQueue<String>()
+    lateinit var httpClient: OkHttpClient
+    lateinit var doc: Document
 
-    lateinit var sensorManager : SensorManager
-    lateinit var proximitySensor : Sensor
+    lateinit var sensorManager: SensorManager
+    lateinit var proximitySensor: Sensor
 
-    lateinit var speechManager : SpeechManager
-    lateinit var locationManager : LocationManager
+    lateinit var speechManager: SpeechManager
+    lateinit var locationManager: LocationManager
 
-    lateinit var firebaseAnalytics : FirebaseAnalytics
+    lateinit var firebaseAnalytics: FirebaseAnalytics
 
     // list for adapter. First is label, second is action
     val listOptions = ArrayList<Pair<String, () -> Unit>>()
@@ -91,7 +95,7 @@ class MainActivity : AppCompatActivity() {
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
-        speechManager = SpeechManager(this, {handleCommand(it)})
+        speechManager = SpeechManager(this, { handleCommand(it) })
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         imgHelp.setOnClickListener {
@@ -110,8 +114,6 @@ class MainActivity : AppCompatActivity() {
             adRequest.addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
         }
         advertisement.loadAd(adRequest.build())
-
-        permissions()
     }
 
     fun handleCommand(s: String) {
@@ -120,22 +122,29 @@ class MainActivity : AppCompatActivity() {
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SEARCH, eventBundle)
         if (s.contains("nearby") || s.contains("what was that", ignoreCase = true)) {
             /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
-            nearby()
+            permission(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    "WikiPod requires access to your location in order to" +
+                            " find items nearby.",
+                    "WikiPod is unable to find nearby items without permission. " +
+                            "Please accept the location permission in order to use this feature.",
+                    {nearby()}
+            )
             return
         }
 //        val number = s.equals("one", true) ?: s.toIntOrNull()
-        val number = if(s.equals("one", true)){
+        val number = if (s.equals("one", true)) {
             1
-        }else if (s.equals("two", true)) {
+        } else if (s.equals("two", true)) {
             2
-        }else{
+        } else {
             s.toIntOrNull()
         }
         if (number != null && listOptions.isNotEmpty()) {
             // we can select one of the options
             if (number > 0 && number - 1 <= listOptions.size) {
                 listOptions[number - 1].second()
-            }else{
+            } else {
                 say("There is no option for $s")
             }
             return
@@ -143,10 +152,10 @@ class MainActivity : AppCompatActivity() {
 
         if (s.equals("read it", true)) {
             if (listOptions.isNotEmpty()) {
-                listOptions.forEachIndexed({index: Int, pair: Pair<String, () -> Unit> ->
-                        say("${index + 1}: ${pair.first}".stripNonProunouncable())
+                listOptions.forEachIndexed({ index: Int, pair: Pair<String, () -> Unit> ->
+                    say("${index + 1}: ${pair.first}".stripNonProunouncable())
                 })
-            }else{
+            } else {
                 say("There is nothing on the screen to dictate.")
             }
             return
@@ -162,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         }
         val words = s.split(" ")
         var query = ""
-        words.forEach{
+        words.forEach {
             query += it + "+"
         }
         if (query.length > 1) {
@@ -174,12 +183,12 @@ class MainActivity : AppCompatActivity() {
         startTalking(queryUrl, s)
     }
 
-    fun initialize(){
+    fun initialize() {
         say("Welcome to WikiPod!")
     }
 
-    fun nearby(){
-        val lastKnownLocation : Location?
+    fun nearby() {
+        val lastKnownLocation: Location?
         try {
             lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
         } catch (e: SecurityException) {
@@ -200,45 +209,45 @@ class MainActivity : AppCompatActivity() {
         val request = Request.Builder()
                 .url(url)
                 .build()
-       httpClient.newCall(request).enqueue(object : Callback {
-           override fun onResponse(call: Call, response: Response) {
-               val gson = Gson()
-               if (response.isSuccessful && response.body() != null) {
-                   val search = gson.fromJson(response.body()!!.string(), WikiGeoSearch::class.java)
+        httpClient.newCall(request).enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                val gson = Gson()
+                if (response.isSuccessful && response.body() != null) {
+                    val search = gson.fromJson(response.body()!!.string(), WikiGeoSearch::class.java)
 
-                   search?.query?.geoSearch?.sortedBy { it.dist }
-                   say("I found these nearby:")
-                   listOptions.clear()
-                   search?.query?.geoSearch?.forEach {
-                       Timber.d("${it.title} - ${it.dist}")
-                       if (it.title != null) {
-                           val action = {
-                               textToSpeech?.stop()
-                               handleCommand(it.title)
-                           }
-                           listOptions.add(
-                                   Pair(it.title, action)
-                           )
-                       }
-                   }
-                   runOnUiThread {
-                       listAdapter.notifyDataSetInvalidated()
-                   }
+                    search?.query?.geoSearch?.sortedBy { it.dist }
+                    say("I found these nearby:")
+                    listOptions.clear()
+                    search?.query?.geoSearch?.forEach {
+                        Timber.d("${it.title} - ${it.dist}")
+                        if (it.title != null) {
+                            val action = {
+                                textToSpeech?.stop()
+                                handleCommand(it.title)
+                            }
+                            listOptions.add(
+                                    Pair(it.title, action)
+                            )
+                        }
+                    }
+                    runOnUiThread {
+                        listAdapter.notifyDataSetInvalidated()
+                    }
 
 
-               }else{
-                   Timber.e("Error getting location call")
-               }
-           }
+                } else {
+                    Timber.e("Error getting location call")
+                }
+            }
 
-           override fun onFailure(call: Call?, e: IOException?) {
-               Timber.e(e)
-           }
+            override fun onFailure(call: Call?, e: IOException?) {
+                Timber.e(e)
+            }
 
-       })
+        })
     }
 
-    fun startTalking(wikiUrl: String, originalQuery: String){
+    fun startTalking(wikiUrl: String, originalQuery: String) {
         getHtml(wikiUrl, {
             doc = Jsoup.parse(it)
 
@@ -263,7 +272,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    fun say(s : String){
+    fun say(s: String) {
         // reduce string size so the tts works
         s.spliceSentences().forEach {
             thingsToSay.add(it)
@@ -276,27 +285,27 @@ class MainActivity : AppCompatActivity() {
                     // if the language is not available
                     it.language = Locale.ENGLISH
                     if (it.isLanguageAvailable(Locale.ENGLISH) < TextToSpeech.LANG_AVAILABLE) {
-                        Toast.makeText(MainActivity@this, "Please install the English TTS data set.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(MainActivity@ this, "Please install the English TTS data set.", Toast.LENGTH_LONG).show()
                         val installIntent = Intent()
                         installIntent.action = TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA
                         startActivity(installIntent)
-                    }else{
+                    } else {
                         if (result == TextToSpeech.SUCCESS) {
                             ttsIsInitialized = true
                             sayAll()
-                        }else if (result == TextToSpeech.ERROR) {
+                        } else if (result == TextToSpeech.ERROR) {
                             Timber.e("Error initializing TTS")
                         }
                     }
                 }
 
             })
-        }else if(ttsIsInitialized){
+        } else if (ttsIsInitialized) {
             sayAll()
         }
     }
 
-    fun sayAll(){
+    fun sayAll() {
         while (thingsToSay.isNotEmpty()) {
             val s = thingsToSay.poll()
             Timber.d("Saying: $s")
@@ -311,18 +320,18 @@ class MainActivity : AppCompatActivity() {
     fun getPageType(): PageType {
         if (doc.select("#section_0").text().contains("Search results")) {
             return PageType.SEARCH
-        }else if (doc.select("#section_0").text() == ("Nearby")) {
+        } else if (doc.select("#section_0").text() == ("Nearby")) {
             return PageType.NEARBY
         }
         return PageType.ARTICLE
     }
 
-    fun getHtml(url : String, callback: (String) -> Unit) {
+    fun getHtml(url: String, callback: (String) -> Unit) {
 //        webView.loadUrl(url)
         getPage(url, callback)
     }
 
-    val sensorListener = object : SensorEventListener{
+    val sensorListener = object : SensorEventListener {
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
 
         }
@@ -334,10 +343,10 @@ class MainActivity : AppCompatActivity() {
                 if (textToSpeech != null) {
                     if (textToSpeech!!.isSpeaking) {
                         textToSpeech!!.stop()
-                    }else{
+                    } else {
                         if (speechManager.isListening()) {
                             speechManager.stop()
-                        }else{
+                        } else {
                             speechManager.listen()
                         }
                     }
@@ -363,12 +372,12 @@ class MainActivity : AppCompatActivity() {
         textToSpeech?.shutdown()
     }
 
-    fun getPageTitle() : String{
+    fun getPageTitle(): String {
         val element = doc.select("#section_0")
         return element.text()
     }
 
-    fun getSummary() : String{
+    fun getSummary(): String {
         val element = doc.select("#mf-section-0")
         element.select("span").remove()
         element.select(".thumb").remove()
@@ -381,9 +390,9 @@ class MainActivity : AppCompatActivity() {
 
     fun getContentsTitles(): String {
         val elements = doc.select("h2 .mw-headline")
-        var s : String = ""
+        var s: String = ""
         listOptions.clear()
-        elements.eachText().forEachIndexed({i: Int, sectionName: String ->
+        elements.eachText().forEachIndexed({ i: Int, sectionName: String ->
             s += sectionName + ". "
             listOptions.add(Pair(sectionName, {
                 val sectionContent = doc.select(".mf-section-${i + 1}")
@@ -425,7 +434,7 @@ class MainActivity : AppCompatActivity() {
         return new.toTypedArray()
     }
 
-    fun String.stripNonProunouncable() : String{
+    fun String.stripNonProunouncable(): String {
         val pairs = hashMapOf<Char, Char>(
                 '(' to ')',
                 '{' to '}',
@@ -433,7 +442,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         val builder = StringBuilder()
-        var closer : Char? = null
+        var closer: Char? = null
         for (c in this) {
             if (pairs.containsKey(c)) {
                 closer = pairs[c]
@@ -441,14 +450,14 @@ class MainActivity : AppCompatActivity() {
             if (closer == null) {
                 builder.append(c)
             }
-            if(c == closer){
+            if (c == closer) {
                 closer = null
             }
         }
         return builder.toString()
     }
 
-    fun getPage(url : String, callback: (String) -> Unit) {
+    fun getPage(url: String, callback: (String) -> Unit) {
         val request = Request.Builder()
                 .url(url)
                 .build()
@@ -468,29 +477,42 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    fun permissions(){
-        Dexter.withActivity(this)
-                .withPermissions(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.RECORD_AUDIO
-                ).withListener(object : MultiplePermissionsListener {
-                    override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
-                        if (report!!.areAllPermissionsGranted()) {
-                            initialize()
-                        }else{
+    /*
+
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.RECORD_AUDIO
+     */
+    fun permission(permission: String,
+                   permissionRequest: String,
+                   deniedResponse: String,
+                   successCallback: () -> Unit) {
+
+
+        val getPermissions = { dialog: DialogInterface, which: Int ->
+            Dexter.withActivity(this)
+                    .withPermission(permission)
+                    .withListener(object : PermissionListener {
+                        override fun onPermissionRationaleShouldBeShown(permission: PermissionRequest, token: PermissionToken) {
+                            token.continuePermissionRequest()
+                        }
+
+                        override fun onPermissionGranted(response: PermissionGrantedResponse?) {
+                            successCallback()
+                        }
+
+                        override fun onPermissionDenied(response: PermissionDeniedResponse) {
                             AlertDialog.Builder(this@MainActivity)
-                                    .setMessage("Audio recording is required to enable speech recognition. GPS is required to find nearby areas of interest.")
-                                    .setPositiveButton(android.R.string.ok) { dialog, which ->
-                                        permissions()
-                                    }
+                                    .setMessage(deniedResponse)
+//                            .setPositiveButton(android.R.string.ok)
                                     .show()
                         }
-                    }
+                    })
+                    .check()
+        }
 
-                    override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>?, token: PermissionToken?) {
-                        token?.continuePermissionRequest()
-                    }
-                })
-                .check()
+        AlertDialog.Builder(this@MainActivity)
+                .setMessage(permissionRequest)
+                .setPositiveButton(android.R.string.ok, getPermissions)
+                .show()
     }
 }
