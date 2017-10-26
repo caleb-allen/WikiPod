@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
             adRequest.addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
         }
         advertisement.loadAd(adRequest.build())
-        initializeTts()
+        initialize()
     }
 
     fun handleCommand(s: String) {
