@@ -18,8 +18,6 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Toast
 import com.google.gson.Gson
-import io.caleballen.wikipod.HelpActivity
-import io.caleballen.wikipod.PageType
 import io.caleballen.wikipod.R
 import io.caleballen.wikipod.data.WikiGeoSearch
 import io.caleballen.wikipod.speech.SpeechManager

@@ -1,8 +1,8 @@
-package io.caleballen.wikipod
+package io.caleballen.wikipod.ui
 
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import kotlinx.android.synthetic.main.activity_main.*
+import io.caleballen.wikipod.R
 
 class MainActivity : AppCompatActivity() {
 

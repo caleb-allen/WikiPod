@@ -1,4 +1,4 @@
-package io.caleballen.wikipod
+package io.caleballen.wikipod.legacy
 
 /**
  * Created by caleb on 10/19/2017.
