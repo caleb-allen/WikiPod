@@ -1,25 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.caleballen.wikipod">
+        package="io.caleballen.wikipod">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <uses-feature
-        android:name="android.hardware.sensor.proximity"
-        android:required="true" />
+            android:name="android.hardware.sensor.proximity"
+            android:required="true" />
 
     <application
-        android:name=".WikiPodApplication"
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:theme="@style/AppTheme">
-        <!--Don't collect on debug builds-->
-        <meta-data
-            android:name="firebase_analytics_collection_deactivated"
-            android:value="${analytics_deactivated}" />
+            android:name=".WikiPodApplication"
+            android:allowBackup="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme">
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,14 +23,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Don't collect on debug builds -->
+        <meta-data
+                android:name="firebase_analytics_collection_deactivated"
+                android:value="${analytics_deactivated}" />
+
+        <activity android:name=".legacy.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
-            android:name=".HelpActivity"
-            android:label="@string/title_activity_help"
-            android:parentActivityName=".MainActivity"
-            android:theme="@style/AppTheme">
+                android:name=".HelpActivity"
+                android:label="@string/title_activity_help"
+                android:parentActivityName=".legacy.MainActivity"
+                android:theme="@style/AppTheme">
             <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="io.caleballen.wikipod.MainActivity" />
+                    android:name="android.support.PARENT_ACTIVITY"
+                    android:value="io.caleballen.wikipod.legacy.MainActivity" />
         </activity>
     </application>
 

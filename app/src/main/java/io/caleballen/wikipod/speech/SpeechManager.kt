@@ -1,13 +1,13 @@
-package io.caleballen.wikipod.util
+package io.caleballen.wikipod.speech
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import io.caleballen.wikipod.util.getPermission
 import timber.log.Timber
 import java.util.*
 
@@ -30,12 +30,12 @@ class SpeechManager(val context: Activity, val callback: (String) -> Unit) : Rec
             isListening = true
         }
         getPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO,
-                "WikiPod needs access to the microphone in order to hear your command.",
-                "WikiPod is unable to hear your command without permission. " +
-                        "Please accept the audio permission in order to use this feature.",
-                startListening
+            context,
+            Manifest.permission.RECORD_AUDIO,
+            "WikiPod needs access to the microphone in order to hear your command.",
+            "WikiPod is unable to hear your command without permission. " +
+            "Please accept the audio permission in order to use this feature.",
+            startListening
         )
     }
 
