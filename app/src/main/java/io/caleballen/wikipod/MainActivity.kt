@@ -18,8 +18,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Toast
-import com.google.android.gms.ads.AdRequest
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.gson.Gson
 import io.caleballen.wikipod.data.WikiGeoSearch
 import io.caleballen.wikipod.util.SpeechManager
@@ -56,8 +54,6 @@ class MainActivity : AppCompatActivity() {
     lateinit var speechManager: SpeechManager
     lateinit var locationManager: LocationManager
 
-    lateinit var firebaseAnalytics: FirebaseAnalytics
-
     // list for adapter. First is label, second is action
     val listOptions = ArrayList<Pair<String, () -> Unit>>()
     val listAdapter = object : BaseAdapter() {
@@ -91,8 +87,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        firebaseAnalytics = FirebaseAnalytics.getInstance(this)
-
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
         speechManager = SpeechManager(this, { handleCommand(it) })
@@ -115,18 +109,11 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
         listViewOptions.adapter = listAdapter
-        val adRequest = AdRequest.Builder()
-        if (BuildConfig.DEBUG) {
-            adRequest.addTestDevice("918BE944D4F7B11DEB4DCEC80E063B20")
-        }
-        advertisement.loadAd(adRequest.build())
         initialize()
     }
 
     fun handleCommand(s: String) {
         val eventBundle = Bundle()
-        eventBundle.putString(FirebaseAnalytics.Param.SEARCH_TERM, s)
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SEARCH, eventBundle)
         if (s.contains("nearby") || s.contains("what was that", ignoreCase = true)) {
             /*startTalking("https://en.m.wikipedia.org/wiki/Special:Nearby", s)*/
             getPermission(
