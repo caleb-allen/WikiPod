@@ -1,1 +1,1 @@
-include ':app', ':godel'
+include ':app'
